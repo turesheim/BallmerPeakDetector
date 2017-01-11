@@ -1,0 +1,2 @@
+eclipse.preferences.version=1
+libraries=[{"package"\:"esp8266","platform"\:"esp8266","library"\:"EEPROM"},{"package"\:"esp8266","platform"\:"esp8266","library"\:"ESP8266HTTPUpdateServer"},{"package"\:"esp8266","platform"\:"esp8266","library"\:"ESP8266WebServer"},{"package"\:"esp8266","platform"\:"esp8266","library"\:"ESP8266WiFi"},{"package"\:"esp8266","platform"\:"esp8266","library"\:"SPI"},"SparkFun Micro OLED Breakout",{"package"\:"esp8266","platform"\:"esp8266","library"\:"Wire"},"PubSubClient"]

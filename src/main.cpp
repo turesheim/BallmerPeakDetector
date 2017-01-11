@@ -22,8 +22,10 @@
 const char* host = "bpd"; 					//!< HTTP server host name
 const int port = 80;						//!< HTTP port number
 
-const char* ssids[] = { "" };				//!< List of WLAN SSIDs
-const char* passwords[] = { "" };			//!< List of WLAN passwords
+const char* ssids[] = {  };
+const char* passwords[] = {  };
+//const char* ssids[] = { "" };				//!< List of WLAN SSIDs
+//const char* passwords[] = { "" };			//!< List of WLAN passwords
 
 #define PIN_RESET 255  						//!< Connect RST to pin 9
 #define DC_JUMPER 0
@@ -33,10 +35,10 @@ ESP8266HTTPUpdateServer httpUpdater;
 
 MicroOLED oled(PIN_RESET, DC_JUMPER);
 
-const char* mqttServer = "192.168.1.111";	//!< MQTT server address
-const char* mqttUser = "";					//!< MQTT client user identifier
-const char* mqttPassword = "";				//!< MQTT client password
-const long mqttPort = 1883;					//!< MQTT server port
+const char* mqttServer = "m20.cloudmqtt.com";	//!< MQTT server address
+const char* mqttUser = "henqvddw";					//!< MQTT client user identifier
+const char* mqttPassword = "QgzLStw8NTOy";				//!< MQTT client password
+const long mqttPort = 15555;					//!< MQTT server port
 #define MQTTTOPIC "ballmerpeakdetector/bac" //!< MQTT topic for BAC measurement
 
 // MQTT Status
@@ -88,7 +90,7 @@ void printBAC(int bac, int font) {
 	String string = "";
 	string += itoa(bac, buffer, 10);
 	oled.clear(PAGE);
-	oled.setFontType(0);
+	oled.setFontType(font);
 	// try to set the cursor in the middle of the screen
 	oled.setCursor(middleX - (oled.getFontWidth() * (string.length() / 2)),
 			middleY - (oled.getFontWidth() / 2));
@@ -122,13 +124,14 @@ void reconnectMqtt() {
 
 	// Loop until we're reconnected
 	while (!mqttClient.connected()) {
+		printText("Attempting MQTT connection...\n");
 		Serial.print("Attempting MQTT connection...");
 		// Create a random client ID
 		String clientId = "bpd-";
 		clientId += String(random(0xffff), HEX);
 		// Attempt to connect
-		//if (mqttClient.connect(clientId.c_str(), mqttUser, mqttPassword)) {
-		if (mqttClient.connect(clientId.c_str())) {
+		if (mqttClient.connect(clientId.c_str(), mqttUser, mqttPassword)) {
+//		if (mqttClient.connect(clientId.c_str())) {
 			Serial.println("connected");
 			// Once connected, publish an announcement...
 			if (mqttStatus == MQTT_STATUS_UNKNOWN) {
@@ -146,11 +149,9 @@ void reconnectMqtt() {
 				Serial.println("Subscribe failed");
 			}
 		} else {
-			Serial.print("failed, rc=");
-			Serial.print(mqttClient.state());
-			Serial.println(" try again in 5 seconds");
-			// Wait 5 seconds before retrying
-			delay(5000);
+			Serial.println("Reattempting connection again in 2 seconds");
+			printText("Failed connecting to MQTT");
+			delay(2000);
 		}
 	}
 }
@@ -182,6 +183,7 @@ void writeMqtt(int bac) {
 }
 
 void setup() {
+
 	Serial.begin(9600);
 	// handle the root of the web server
 	//httpServer.on("/", HTTP_GET, handleRoot);
@@ -222,19 +224,37 @@ void setup() {
 
 	// prepare to read the analog input
 	pinMode(A0, INPUT);
+	// and the button
+	pinMode(D7, INPUT_PULLUP);
+
 }
 
-int out;
+int current;
+unsigned int out;
+unsigned int high = 0;
 void loop() {
-	IPAddress a = WiFi.localIP();
-//	for (int i = 0; i < 2000; i++) {
-//		httpServer.handleClient();
-//		delay(1);
-//	}
-	delay(2000);
-	out = (unsigned int) analogRead(A0);
-	printBAC(out, 1);
-	writeMqtt(out);
-	mqttClient.loop();
+	printTitle("Press\nbutton", 0);
+	current = digitalRead(D7);
+	while (digitalRead(D7) == HIGH) {
+		// keep it warm
+		out = (unsigned int) analogRead(A0);
+		mqttClient.loop();
+		yield();
+	}
+	for (int i = 0; i < 50; i++) {
+		out = (unsigned int) analogRead(A0);
+		if (out > high){
+			high = out;
+		}
+		printBAC(out, 2);
+		delay(20);
+		yield();
+	}
+	writeMqtt(high);
+	printTitle("OK", 1);
+	delay(1000);
+	printBAC(high, 2);
+	delay(5000);
+	high = 0;
 }
 
